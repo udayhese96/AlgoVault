@@ -1,49 +1,337 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ====================================================
+   DESIGN TOKENS
+   ==================================================== */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --primary: #3b82f6;
+  --primary-dark: #2563eb;
+  --primary-glow: rgba(59, 130, 246, 0.35);
+  --secondary: #8b5cf6;
+  --accent: #f43f5e;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --transition-fast: 0.15s ease;
+  --transition-spring: 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ====================================================
+   LIGHT THEME
+   ==================================================== */
+[data-theme='light'] {
+  --bg: #f0f4ff;
+  --bg-surface: #ffffff;
+  --fg: #0f172a;
+  --fg-muted: #64748b;
+  --fg-subtle: #94a3b8;
+  --border: rgba(0, 0, 0, 0.08);
+  --border-hover: rgba(59, 130, 246, 0.4);
+  --glass-bg: rgba(255, 255, 255, 0.65);
+  --glass-border: rgba(0, 0, 0, 0.07);
+  --input-bg: #f8fafc;
+  --nav-bg: rgba(240, 244, 255, 0.85);
+  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.06), 0 1px 4px rgba(0,0,0,0.04);
+  --shadow-float: 0 20px 60px rgba(0, 0, 0, 0.12), 0 4px 20px rgba(0,0,0,0.06);
+  --glow-primary: rgba(59, 130, 246, 0.12);
+  --code-bg: #1e293b;
 }
 
-html {
-  height: 100%;
+/* ====================================================
+   DARK THEME
+   ==================================================== */
+[data-theme='dark'] {
+  --bg: #070810;
+  --bg-surface: #0d0f1a;
+  --fg: #f1f5f9;
+  --fg-muted: #94a3b8;
+  --fg-subtle: #475569;
+  --border: rgba(255, 255, 255, 0.07);
+  --border-hover: rgba(59, 130, 246, 0.5);
+  --glass-bg: rgba(255, 255, 255, 0.04);
+  --glass-border: rgba(255, 255, 255, 0.07);
+  --input-bg: rgba(255, 255, 255, 0.04);
+  --nav-bg: rgba(7, 8, 16, 0.8);
+  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.4), 0 1px 4px rgba(0,0,0,0.3);
+  --shadow-float: 0 20px 60px rgba(0, 0, 0, 0.6), 0 4px 20px rgba(0,0,0,0.4);
+  --glow-primary: rgba(59, 130, 246, 0.08);
+  --code-bg: #0f172a;
 }
 
-html,
+/* ====================================================
+   BASE RESET
+   ==================================================== */
+*, *::before, *::after { box-sizing: border-box; padding: 0; margin: 0; }
+
+html { scroll-behavior: smooth; }
+
 body {
-  max-width: 100vw;
+  background-color: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  min-height: 100vh;
   overflow-x: hidden;
-}
-
-body {
-  min-height: 100%;
-  display: flex;
-  flex-direction: column;
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-* {
-  box-sizing: border-box;
-  padding: 0;
-  margin: 0;
+a { color: inherit; text-decoration: none; }
+button { cursor: pointer; border: none; background: none; font-family: inherit; }
+input, textarea, select { font-family: inherit; }
+
+h1, h2, h3, h4, h5 {
+  letter-spacing: -0.03em;
+  line-height: 1.1;
 }
 
-a {
-  color: inherit;
-  text-decoration: none;
+/* ====================================================
+   AMBIENT BACKGROUND GLOW (Dark only)
+   ==================================================== */
+[data-theme='dark'] body::before,
+[data-theme='dark'] body::after {
+  content: "";
+  position: fixed;
+  pointer-events: none;
+  z-index: -1;
+  border-radius: 50%;
+  filter: blur(120px);
+}
+[data-theme='dark'] body::before {
+  width: 600px; height: 600px;
+  top: -150px; left: -100px;
+  background: radial-gradient(circle, rgba(59,130,246,0.1) 0%, transparent 70%);
+}
+[data-theme='dark'] body::after {
+  width: 500px; height: 500px;
+  bottom: -100px; right: -100px;
+  background: radial-gradient(circle, rgba(139,92,246,0.1) 0%, transparent 70%);
 }
 
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
-  }
+/* ====================================================
+   LAYOUT
+   ==================================================== */
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+@media (max-width: 768px) {
+  .container { padding: 0 1.25rem; }
+}
+
+/* ====================================================
+   GLASSMORPHISM CARDS
+   ==================================================== */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(32px) saturate(200%);
+  -webkit-backdrop-filter: blur(32px) saturate(200%);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-card), inset 0 1px 0 rgba(255,255,255,0.06);
+  border-radius: var(--radius-lg);
+  transition: transform var(--transition-spring), box-shadow var(--transition-spring), border-color var(--transition-fast);
+}
+
+/* ====================================================
+   TYPOGRAPHY
+   ==================================================== */
+.gradient-text {
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ====================================================
+   BUTTONS
+   ==================================================== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.8rem 1.75rem;
+  border-radius: var(--radius-md);
+  font-weight: 700;
+  font-size: 0.9375rem;
+  transition: all var(--transition-spring);
+  gap: 0.5rem;
+  cursor: pointer;
+  white-space: nowrap;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,0.1);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.btn:hover::after { opacity: 1; }
+.btn:active { transform: scale(0.97); }
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: #fff;
+  box-shadow: 0 4px 20px var(--primary-glow);
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px var(--primary-glow);
+}
+
+.btn-ghost {
+  background: var(--glass-bg);
+  color: var(--fg);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(12px);
+}
+
+.btn-ghost:hover {
+  border-color: var(--border-hover);
+  transform: translateY(-2px);
+}
+
+/* ====================================================
+   INPUTS
+   ==================================================== */
+.input-field {
+  background: var(--input-bg);
+  border: 1px solid var(--glass-border);
+  padding: 0.9rem 1.25rem;
+  border-radius: var(--radius-md);
+  color: var(--fg);
+  width: 100%;
+  outline: none;
+  font-size: 0.9375rem;
+  transition: all var(--transition-fast);
+}
+
+.input-field::placeholder { color: var(--fg-subtle); }
+
+.input-field:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.12);
+  background: var(--bg-surface);
+}
+
+/* ====================================================
+   BADGES
+   ==================================================== */
+.badge {
+  padding: 0.3rem 0.75rem;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.Easy   { background: rgba(16,185,129,0.12); color: #10b981; border: 1px solid rgba(16,185,129,0.2); }
+.Medium { background: rgba(245,158,11,0.12); color: #f59e0b; border: 1px solid rgba(245,158,11,0.2); }
+.Hard   { background: rgba(244,63,94,0.12);  color: #f43f5e; border: 1px solid rgba(244,63,94,0.2); }
+
+/* ====================================================
+   APPLE MAGNUS EFFECT
+   ==================================================== */
+.magnus-container {
+  display: flex;
+  align-items: flex-end;
+  gap: 1.5rem;
+}
+
+.magnus-item {
+  flex: 1;
+  transition:
+    transform var(--transition-spring),
+    opacity var(--transition-spring),
+    flex var(--transition-spring);
+  transform-origin: bottom center;
+  will-change: transform, opacity;
+}
+
+.magnus-container:hover .magnus-item {
+  transform: scale(0.93) translateY(6px);
+  opacity: 0.6;
+}
+
+.magnus-container .magnus-item:hover {
+  transform: scale(1.08) translateY(-12px);
+  opacity: 1 !important;
+  z-index: 10;
+}
+
+/* ====================================================
+   NAVBAR
+   ==================================================== */
+.nav-blur {
+  background: var(--nav-bg);
+  backdrop-filter: blur(32px) saturate(180%);
+  -webkit-backdrop-filter: blur(32px) saturate(180%);
+  border-bottom: 1px solid var(--glass-border);
+}
+
+/* ====================================================
+   SCROLLBAR
+   ==================================================== */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: var(--fg-muted); }
+
+/* ====================================================
+   ANIMATIONS
+   ==================================================== */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 var(--primary-glow); }
+  50%       { box-shadow: 0 0 0 8px transparent; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-8px); }
+}
+
+.animate-fade-up  { animation: fadeInUp 0.6s ease forwards; }
+.animate-float    { animation: float 4s ease-in-out infinite; }
+.animate-glow     { animation: pulse-glow 2s ease-in-out infinite; }
+
+/* Stagger Delays */
+.delay-100 { animation-delay: 0.1s; }
+.delay-200 { animation-delay: 0.2s; }
+.delay-300 { animation-delay: 0.3s; }
+.delay-400 { animation-delay: 0.4s; }
+.delay-500 { animation-delay: 0.5s; }
+
+/* ====================================================
+   NOISE TEXTURE (Premium) - top layer
+   ==================================================== */
+[data-theme='dark'] .noise-overlay::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  opacity: 0.04;
+  pointer-events: none;
+  z-index: -1;
 }
