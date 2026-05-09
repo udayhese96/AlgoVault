@@ -41,6 +41,7 @@ export default function QuestionDetail() {
   const [description, setDescription] = useState('')
   const [approach, setApproach] = useState('')
   const [terminalOutput, setTerminalOutput] = useState('')
+  const [isExecuting, setIsExecuting] = useState(false)
 
   // Sidebar state
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
@@ -126,6 +127,35 @@ export default function QuestionDetail() {
       setQuestion(prev => ({ ...prev, ...updateData }))
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
+    }
+  }
+
+  const runCode = async () => {
+    if (!code.trim()) return
+    setIsExecuting(true)
+    setOutputExpanded(true)
+    setTerminalOutput('Executing code on secure compiler engine...\n\n')
+    
+    try {
+      const res = await fetch('/api/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, language: activeLang })
+      })
+      
+      const data = await res.json()
+      
+      if (!res.ok) {
+        setTerminalOutput(`Execution Error:\n\n${data.error}`)
+      } else {
+        const outputStr = data.output || 'Code executed successfully with no output.'
+        const memoryStr = data.memory ? `\n\n---\n[Memory: ${data.memory} KB | Time: ${data.time}s]` : ''
+        setTerminalOutput(`${outputStr}${memoryStr}`)
+      }
+    } catch (err) {
+      setTerminalOutput(`Network Error: Failed to reach execution server.\nDetails: ${err.message}`)
+    } finally {
+      setIsExecuting(false)
     }
   }
 
@@ -379,12 +409,29 @@ export default function QuestionDetail() {
               ))}
             </div>
 
-            <div className="flex items-center gap-3">
-              <span className="text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5"
+            <div className="flex items-center gap-4">
+              <span className="text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5 hidden md:flex"
                 style={{color:'#10b981'}}>
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Auto-saved on sync
+                Auto-saved
               </span>
+              <button 
+                onClick={runCode}
+                disabled={isExecuting || !code.trim()}
+                className="btn text-sm px-4 py-1.5 h-8 gap-2 shrink-0 transition-all"
+                style={{
+                  background: isExecuting ? 'var(--glass-bg)' : 'var(--primary)',
+                  color: isExecuting ? 'var(--fg-muted)' : '#fff',
+                  border: isExecuting ? '1px solid var(--glass-border)' : 'none',
+                  boxShadow: isExecuting ? 'none' : '0 2px 10px rgba(59,130,246,0.3)'
+                }}
+              >
+                {isExecuting ? (
+                  <><div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" /> Running...</>
+                ) : (
+                  <><span>▶</span> Run</>
+                )}
+              </button>
             </div>
           </div>
 
@@ -440,7 +487,7 @@ export default function QuestionDetail() {
                 </span>
                 <span className="text-[10px] px-2 py-0.5 rounded font-bold"
                   style={{background:'rgba(63,185,80,0.1)', color:'#3fb950', border:'1px solid rgba(63,185,80,0.25)'}}>
-                  Paste your local run result
+                  Live Execution Engine
                 </span>
               </div>
 
@@ -491,7 +538,7 @@ export default function QuestionDetail() {
                     padding: '14px 16px',
                     letterSpacing: '0.01em',
                   }}
-                  placeholder={"Paste your terminal output here...\n\nExample output:\n  Hello World\n  [1, 0]\n  true\n\nProcess finished with exit code 0"}
+                  placeholder={"Run your code to see the output here...\n\nOr paste custom terminal output manually."}
                   value={terminalOutput}
                   onChange={e => setTerminalOutput(e.target.value)}
                   spellCheck={false}
