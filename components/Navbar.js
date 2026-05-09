@@ -1,31 +1,20 @@
 'use client'
 
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, useRef } from 'react'
 import { useTheme } from '@/components/ThemeContext'
+import { useAuth } from '@/components/AuthContext'
 
 export default function Navbar() {
-  const supabase = createClient()
   const router = useRouter()
   const { theme, toggleTheme } = useTheme()
-  const [user, setUser] = useState(null)
+  const { user, logout } = useAuth()
   const [scrolled, setScrolled] = useState(false)
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const dropdownRef = useRef(null)
 
   useEffect(() => {
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      setUser(user)
-    }
-    getUser()
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user || null)
-    })
-
     const handleScroll = () => setScrolled(window.scrollY > 10)
     window.addEventListener('scroll', handleScroll)
 
@@ -38,14 +27,13 @@ export default function Navbar() {
     document.addEventListener('mousedown', handleClickOutside)
 
     return () => {
-      subscription.unsubscribe()
       window.removeEventListener('scroll', handleScroll)
       document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [])
 
   const handleLogout = async () => {
-    await supabase.auth.signOut()
+    await logout()
     setDropdownOpen(false)
     router.push('/auth/login')
     router.refresh()

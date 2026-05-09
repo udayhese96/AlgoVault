@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
@@ -10,10 +9,8 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
 
-  const supabase = createClient()
   const router = useRouter()
 
   const handleRegister = async (e) => {
@@ -22,39 +19,37 @@ export default function RegisterPage() {
       setError('Passwords do not match')
       return
     }
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters')
+      return
+    }
     setLoading(true)
     setError('')
 
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
-    })
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      })
 
-    if (error) {
-      setError(error.message)
+      const data = await res.json()
+
+      if (!res.ok) {
+        setError(data.error || 'Registration failed')
+        setLoading(false)
+        return
+      }
+
+      // Store email and password in sessionStorage for verify-otp page
+      sessionStorage.setItem('otp_email', email)
+      sessionStorage.setItem('otp_password', password)
+      
+      router.push('/auth/verify-otp?type=signup')
+    } catch {
+      setError('Something went wrong. Please try again.')
       setLoading(false)
-    } else {
-      setSuccess(true)
     }
-  }
-
-  if (success) {
-    return (
-      <div className="min-h-screen flex items-center justify-center px-4 py-20">
-        <div className="glass p-12 text-center max-w-md w-full">
-          <div className="text-5xl mb-6">📬</div>
-          <h2 className="text-3xl font-black mb-4 tracking-tight">Check your inbox</h2>
-          <p className="mb-8" style={{color:'var(--fg-muted)'}}>
-            We sent a confirmation link to <strong style={{color:'var(--fg)'}}>{email}</strong>.
-            Click it to activate your account.
-          </p>
-          <Link href="/auth/login" className="btn btn-primary w-full py-4">
-            Go to Sign In
-          </Link>
-        </div>
-      </div>
-    )
   }
 
   return (
@@ -128,7 +123,7 @@ export default function RegisterPage() {
               {loading ? (
                 <span className="flex items-center gap-2">
                   <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                  Creating account...
+                  Sending verification code...
                 </span>
               ) : 'Create Free Account →'}
             </button>

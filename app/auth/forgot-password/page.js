@@ -1,54 +1,42 @@
 'use client'
 
 import { useState } from 'react'
-import { createClient } from '@/lib/supabase'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
-  const [sent, setSent] = useState(false)
   const [error, setError] = useState('')
-  const supabase = createClient()
+  const router = useRouter()
 
   const handleReset = async (e) => {
     e.preventDefault()
     setLoading(true)
     setError('')
 
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/reset-password`,
-    })
+    try {
+      const res = await fetch('/api/otp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, type: 'reset' }),
+      })
 
-    if (error) {
-      setError(error.message)
+      const data = await res.json()
+
+      if (!res.ok) {
+        setError(data.error || 'Failed to send OTP')
+        setLoading(false)
+        return
+      }
+
+      // Store email for verify-otp page
+      sessionStorage.setItem('otp_email', email)
+      router.push('/auth/verify-otp?type=reset')
+    } catch {
+      setError('Something went wrong. Please try again.')
       setLoading(false)
-    } else {
-      setSent(true)
     }
-  }
-
-  if (sent) {
-    return (
-      <div className="min-h-screen flex items-center justify-center px-4 py-20">
-        <div className="glass p-12 text-center max-w-md w-full">
-          <div className="w-20 h-20 rounded-3xl flex items-center justify-center text-4xl mx-auto mb-8 shadow-xl"
-            style={{background:'rgba(59,130,246,0.1)', border:'1px solid rgba(59,130,246,0.2)'}}>
-            📬
-          </div>
-          <h2 className="text-3xl font-black mb-4 tracking-tight">Check your email</h2>
-          <p className="mb-3" style={{color:'var(--fg-muted)'}}>
-            We sent a password reset link to <strong style={{color:'var(--fg)'}}>{email}</strong>.
-          </p>
-          <p className="text-sm mb-10" style={{color:'var(--fg-subtle)'}}>
-            The link expires in 1 hour. Check your spam folder if you don't see it.
-          </p>
-          <Link href="/auth/login" className="btn btn-primary w-full py-4">
-            Back to Sign In
-          </Link>
-        </div>
-      </div>
-    )
   }
 
   return (
@@ -71,7 +59,7 @@ export default function ForgotPasswordPage() {
             </div>
             <h1 className="text-3xl font-black tracking-tight mb-2">Forgot password?</h1>
             <p className="text-sm" style={{color:'var(--fg-muted)'}}>
-              No worries. Enter your email and we'll send a reset link.
+              No worries. Enter your email and we&apos;ll send a verification code.
             </p>
           </div>
 
@@ -104,9 +92,9 @@ export default function ForgotPasswordPage() {
               {loading ? (
                 <span className="flex items-center gap-2">
                   <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                  Sending reset link...
+                  Sending code...
                 </span>
-              ) : 'Send Reset Link →'}
+              ) : 'Send Verification Code →'}
             </button>
           </form>
         </div>

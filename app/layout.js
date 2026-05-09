@@ -1,6 +1,7 @@
 import './globals.css'
 import Navbar from '@/components/Navbar'
 import { ThemeProvider } from '@/components/ThemeContext'
+import { AuthProvider } from '@/components/AuthContext'
 
 export const metadata = {
   title: 'AlgoVault — DSA Practice Platform',
@@ -25,8 +26,10 @@ export default function RootLayout({ children }) {
       </head>
       <body className="antialiased">
         <ThemeProvider>
-          <Navbar />
-          <main className="pt-16">{children}</main>
+          <AuthProvider>
+            <Navbar />
+            <main className="pt-16">{children}</main>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>
