@@ -52,8 +52,12 @@ export default function Home() {
             <div className="absolute -inset-4 rounded-[36px] blur-2xl opacity-20"
               style={{background: 'radial-gradient(ellipse, #3b82f6, #8b5cf6, transparent)'}} />
 
-            <div className="glass relative overflow-hidden rounded-3xl border"
-              style={{borderColor:'rgba(255,255,255,0.1)'}}>
+            <div className="relative overflow-hidden rounded-3xl border shadow-2xl"
+              style={{
+                backgroundColor: '#0f172a',
+                borderColor:'rgba(255,255,255,0.1)',
+                color: '#e2e8f0'
+              }}>
 
               {/* macOS-style title bar */}
               <div className="flex items-center gap-3 px-5 py-4 border-b"

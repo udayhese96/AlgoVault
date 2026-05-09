@@ -91,16 +91,13 @@ export default function Navbar() {
               {/* User Avatar Button */}
               <button
                 onClick={() => setDropdownOpen(!dropdownOpen)}
-                className="flex items-center gap-2 pl-1 pr-3 py-1 rounded-2xl border transition-all hover:border-primary"
-                style={{background:'var(--glass-bg)', borderColor:'var(--glass-border)'}}>
-                <div className="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs text-white"
-                  style={{background:'linear-gradient(135deg, #3b82f6, #8b5cf6)'}}>
-                  {user.email?.[0]?.toUpperCase()}
-                </div>
-                <span className="text-xs font-semibold hidden sm:block max-w-[100px] truncate" style={{color:'var(--fg-muted)'}}>
-                  {user.email?.split('@')[0]}
-                </span>
-                <span className="text-xs" style={{color:'var(--fg-subtle)'}}>▾</span>
+                className="w-9 h-9 rounded-full flex items-center justify-center transition-transform hover:scale-110 active:scale-95"
+                style={{ color: 'var(--fg-subtle)' }}
+                aria-label="User Menu"
+              >
+                <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
+                </svg>
               </button>
 
               {/* Dropdown Menu */}

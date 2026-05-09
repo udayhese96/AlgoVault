@@ -5,6 +5,8 @@ import { createClient } from '@/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
+import { useAuth } from '@/components/AuthContext'
+import { useTheme } from '@/components/ThemeContext'
 
 // Dynamically import Monaco to avoid SSR issues
 const MonacoEditor = dynamic(
@@ -24,6 +26,8 @@ export default function QuestionDetail() {
 
   const params = useParams()
   const questionId = params.id
+  const { user } = useAuth()
+  const { theme } = useTheme()
 
   const [question, setQuestion] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -38,12 +42,40 @@ export default function QuestionDetail() {
   const [approach, setApproach] = useState('')
   const [terminalOutput, setTerminalOutput] = useState('')
 
+  // Sidebar state
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true)
+  const [sidebarData, setSidebarData] = useState([])
+  const [expandedFolders, setExpandedFolders] = useState({})
+
   const supabase = createClient()
   const router = useRouter()
 
   useEffect(() => {
     if (questionId) fetchQuestionData()
   }, [questionId])
+
+  useEffect(() => {
+    if (user) fetchSidebarData()
+  }, [user])
+
+  const fetchSidebarData = async () => {
+    const { data, error } = await supabase
+      .from('folders')
+      .select('*, questions(id, title, difficulty)')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      
+    if (!error && data) {
+      setSidebarData(data)
+      const allExpanded = {}
+      data.forEach(f => allExpanded[f.id] = true)
+      setExpandedFolders(allExpanded)
+    }
+  }
+
+  const toggleFolder = (folderId) => {
+    setExpandedFolders(prev => ({...prev, [folderId]: !prev[folderId]}))
+  }
 
   const fetchQuestionData = async () => {
     setLoading(true)
@@ -118,18 +150,28 @@ export default function QuestionDetail() {
           minHeight:'48px'
         }}>
 
-        {/* Breadcrumb */}
-        <nav className="flex items-center gap-2 text-xs font-semibold"
-          style={{color:'var(--fg-muted)'}}>
-          <Link href="/dashboard" className="hover:text-primary transition-colors">Library</Link>
-          <span style={{color:'var(--fg-subtle)'}}>/</span>
-          <Link href={`/folders/${question.folder?.id}`} className="hover:text-primary transition-colors">
-            {question.folder?.name}
-          </Link>
-          <span style={{color:'var(--fg-subtle)'}}>/</span>
-          <span style={{color:'var(--fg)', fontWeight:700}}>{question.title}</span>
-          <span className={`ml-2 badge ${question.difficulty}`}>{question.difficulty}</span>
-        </nav>
+        <div className="flex items-center gap-3">
+          <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 hover:bg-[var(--glass-bg)] rounded-md transition-colors text-[var(--fg-muted)] hover:text-[var(--fg)]" aria-label="Toggle Sidebar">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="3" y1="12" x2="21" y2="12"></line>
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+          </button>
+
+          {/* Breadcrumb */}
+          <nav className="flex items-center gap-2 text-xs font-semibold"
+            style={{color:'var(--fg-muted)'}}>
+            <Link href="/dashboard" className="hover:text-primary transition-colors">Library</Link>
+            <span style={{color:'var(--fg-subtle)'}}>/</span>
+            <Link href={`/folders/${question.folder?.id}`} className="hover:text-primary transition-colors">
+              {question.folder?.name}
+            </Link>
+            <span style={{color:'var(--fg-subtle)'}}>/</span>
+            <span style={{color:'var(--fg)', fontWeight:700}}>{question.title}</span>
+            <span className={`ml-2 badge ${question.difficulty}`}>{question.difficulty}</span>
+          </nav>
+        </div>
 
         {/* Right actions */}
         <div className="flex items-center gap-3">
@@ -155,13 +197,65 @@ export default function QuestionDetail() {
         </div>
       </div>
 
-      {/* ── MAIN 2-PANEL LAYOUT ── */}
-      <div className="flex flex-1 min-h-0">
+      {/* ── MAIN LAYOUT ── */}
+      <div className="flex flex-1 min-h-0 relative p-2 gap-2" style={{ background: 'var(--bg)' }}>
+
+        {/* ════════════════════════════════ */}
+        {/* SIDEBAR (File Explorer)         */}
+        {/* ════════════════════════════════ */}
+        {isSidebarOpen && (
+          <div className="w-64 shrink-0 flex flex-col transition-all rounded-xl border overflow-hidden"
+            style={{
+              borderColor:'var(--glass-border)',
+              background:'var(--bg-surface)',
+            }}>
+            <div className="px-4 py-3 border-b text-xs font-bold uppercase tracking-widest flex items-center justify-between"
+              style={{borderColor:'var(--glass-border)', color:'var(--fg-muted)'}}>
+              Explorer
+            </div>
+            <div className="flex-1 overflow-y-auto p-2" style={{scrollbarWidth:'thin'}}>
+              {sidebarData.map(folder => (
+                <div key={folder.id} className="mb-1">
+                  <button 
+                    onClick={() => toggleFolder(folder.id)}
+                    className="flex items-center gap-2 w-full text-left px-2 py-1.5 rounded hover:bg-[var(--glass-bg)] transition-colors text-sm font-semibold"
+                    style={{color:'var(--fg)'}}>
+                    <span className="text-[10px] w-3 text-center" style={{color:'var(--fg-subtle)'}}>
+                      {expandedFolders[folder.id] ? '▼' : '▶'}
+                    </span>
+                    <span style={{color: folder.color}}>📁</span>
+                    <span className="truncate">{folder.name}</span>
+                  </button>
+                  
+                  {expandedFolders[folder.id] && folder.questions && (
+                    <div className="mt-1 flex flex-col gap-0.5">
+                      {folder.questions.map(q => (
+                        <Link key={q.id} href={`/questions/${q.id}`}
+                          className={`flex items-center gap-2 pl-7 pr-2 py-1.5 rounded text-xs transition-colors hover:bg-[var(--glass-bg)] ${q.id === questionId ? 'bg-[var(--glow-primary)] font-semibold' : 'text-[var(--fg-muted)]'}`}
+                          style={{
+                            color: q.id === questionId ? 'var(--primary)' : 'var(--fg-muted)'
+                          }}>
+                          <div className="w-1.5 h-1.5 rounded-full shrink-0" 
+                            style={{
+                              background: q.difficulty === 'Easy' ? '#10b981' : (q.difficulty === 'Hard' ? '#f43f5e' : '#fb8c00'),
+                              boxShadow: `0 0 8px ${q.difficulty === 'Easy' ? '#10b981' : (q.difficulty === 'Hard' ? '#f43f5e' : '#fb8c00')}80`
+                            }} 
+                          />
+                          <span className="truncate" title={q.title}>{q.title}</span>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* ════════════════════════════════ */}
         {/* LEFT PANEL — Problem + Notes    */}
         {/* ════════════════════════════════ */}
-        <div className="flex flex-col border-r shrink-0"
+        <div className="flex flex-col shrink-0 rounded-xl border overflow-hidden shadow-sm"
           style={{
             width:'38%',
             borderColor:'var(--glass-border)',
@@ -252,9 +346,15 @@ export default function QuestionDetail() {
         {/* ════════════════════════════════ */}
         {/* RIGHT PANEL — Editor + Output   */}
         {/* ════════════════════════════════ */}
-        <div className="flex flex-col flex-1 min-w-0 min-h-0">
+        <div className="flex flex-col flex-1 min-w-0 min-h-0 gap-2">
 
-          {/* Editor top bar */}
+          {/* ── EDITOR PANEL ── */}
+          <div className="flex flex-col flex-1 min-h-0 rounded-xl border overflow-hidden shadow-sm"
+            style={{
+              borderColor:'var(--glass-border)',
+              background:'var(--bg-surface)',
+            }}>
+            {/* Editor top bar */}
           <div className="flex items-center justify-between px-4 py-2 border-b shrink-0"
             style={{
               background:'var(--bg-surface)',
@@ -293,7 +393,7 @@ export default function QuestionDetail() {
             <MonacoEditor
               height="100%"
               language={activeLang === 'java' ? 'java' : 'python'}
-              theme="vs-dark"
+              theme={theme === 'dark' ? 'vs-dark' : 'light'}
               value={code}
               onChange={val => setCode(val || '')}
               options={{
@@ -318,18 +418,20 @@ export default function QuestionDetail() {
             />
           </div>
 
+          </div> {/* End Editor Panel */}
+
           {/* ── TERMINAL OUTPUT PANEL (bottom drawer) ── */}
-          <div className="border-t shrink-0 flex flex-col"
+          <div className="shrink-0 flex flex-col rounded-xl border overflow-hidden shadow-sm"
             style={{
-              borderColor:'#30363d',
-              background:'#161b22',
+              borderColor:'var(--glass-border)',
+              background:'var(--bg-surface)',
               height: outputExpanded ? '240px' : '44px',
               transition:'height 0.3s cubic-bezier(0.25,1,0.5,1)',
             }}>
 
             {/* Output tab bar */}
             <div className="flex items-center justify-between px-4 shrink-0 cursor-pointer select-none"
-              style={{height:'44px', borderBottom: outputExpanded ? '1px solid #30363d' : 'none'}}
+              style={{height:'44px', borderBottom: outputExpanded ? '1px solid var(--glass-border)' : 'none'}}
               onClick={() => setOutputExpanded(!outputExpanded)}>
 
               <div className="flex items-center gap-3">
@@ -348,16 +450,16 @@ export default function QuestionDetail() {
                     onClick={e => { e.stopPropagation(); setTerminalOutput('') }}
                     className="text-[10px] font-bold uppercase px-2 py-0.5 rounded transition-all"
                     style={{
-                      color:'#8b949e',
-                      background:'rgba(255,255,255,0.05)',
-                      border:'1px solid #30363d'
+                      color:'var(--fg-subtle)',
+                      background:'var(--glass-bg)',
+                      border:'1px solid var(--glass-border)'
                     }}
                     onMouseEnter={e => e.currentTarget.style.color='#f85149'}
-                    onMouseLeave={e => e.currentTarget.style.color='#8b949e'}>
+                    onMouseLeave={e => e.currentTarget.style.color='var(--fg-subtle)'}>
                     Clear
                   </button>
                 )}
-                <span className="text-xs" style={{color:'#8b949e'}}>
+                <span className="text-xs" style={{color:'var(--fg-subtle)'}}>
                   {outputExpanded ? '▼' : '▲'}
                 </span>
               </div>
@@ -365,13 +467,13 @@ export default function QuestionDetail() {
 
             {/* Terminal body */}
             {outputExpanded && (
-              <div className="flex flex-1 min-h-0" style={{background:'#0d1117'}}>
+              <div className="flex flex-1 min-h-0" style={{background:'var(--input-bg)'}}>
                 {/* Gutter / prompt */}
                 <div className="flex flex-col gap-1 px-3 pt-4 text-xs font-mono shrink-0 select-none"
                   style={{
-                    background:'#0d1117',
-                    color:'rgba(99,110,123,0.8)',
-                    borderRight:'1px solid rgba(48,54,61,1)',
+                    background:'var(--input-bg)',
+                    color:'var(--fg-subtle)',
+                    borderRight:'1px solid var(--glass-border)',
                     minWidth:'52px',
                     paddingRight:'12px',
                   }}>
@@ -381,8 +483,8 @@ export default function QuestionDetail() {
                 <textarea
                   className="flex-1 resize-none font-mono outline-none"
                   style={{
-                    background: '#0d1117',
-                    color: terminalOutput ? '#e6edf3' : '#484f58',
+                    background: 'var(--input-bg)',
+                    color: terminalOutput ? 'var(--fg)' : 'var(--fg-muted)',
                     caretColor: '#3fb950',
                     fontSize: '14px',
                     lineHeight: '1.8',

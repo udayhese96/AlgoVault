@@ -16,6 +16,12 @@ export default function FolderDetail() {
   const [newTitle, setNewTitle] = useState('')
   const [newDifficulty, setNewDifficulty] = useState('Medium')
   const [newTags, setNewTags] = useState('')
+  
+  // Controls state
+  const [searchQuery, setSearchQuery] = useState('')
+  const [difficultyFilter, setDifficultyFilter] = useState('All')
+  const [sortBy, setSortBy] = useState('newest')
+
   const supabase = createClient()
   const router = useRouter()
   const { user } = useAuth()
@@ -62,6 +68,15 @@ export default function FolderDetail() {
     </div>
   )
 
+  const filteredQuestions = questions
+    .filter(q => q.title.toLowerCase().includes(searchQuery.toLowerCase()))
+    .filter(q => difficultyFilter === 'All' || q.difficulty === difficultyFilter)
+    .sort((a, b) => {
+      const dateA = new Date(a.created_at).getTime()
+      const dateB = new Date(b.created_at).getTime()
+      return sortBy === 'newest' ? dateB - dateA : dateA - dateB
+    })
+
   return (
     <div className="container py-10 pb-32">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-16">
@@ -89,9 +104,68 @@ export default function FolderDetail() {
           <button onClick={() => setShowModal(true)} className="btn btn-primary px-10">Create First Question</button>
         </div>
       ) : (
-        <div className="grid gap-4">
-          {questions.map(q => (
-            <Link key={q.id} href={`/questions/${q.id}`}
+        <>
+          {/* Controls */}
+          <div className="flex flex-col sm:flex-row gap-4 mb-8 items-center justify-between p-4 glass rounded-2xl">
+            {/* Search */}
+            <div className="flex-1 w-full relative text-muted">
+              <input 
+                type="text" 
+                placeholder="Search questions by title..." 
+                className="input-field w-full !pl-12 bg-input-bg"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+              />
+              <svg 
+                className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 opacity-50" 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24" 
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+              </svg>
+            </div>
+            
+            {/* Filters */}
+            <div className="flex gap-3 w-full sm:w-auto">
+              <select 
+                className="input-field bg-input-bg w-full sm:w-auto cursor-pointer"
+                value={difficultyFilter}
+                onChange={e => setDifficultyFilter(e.target.value)}
+              >
+                <option value="All">All Levels</option>
+                <option value="Easy">Easy</option>
+                <option value="Medium">Medium</option>
+                <option value="Hard">Hard</option>
+              </select>
+              
+              <select 
+                className="input-field bg-input-bg w-full sm:w-auto cursor-pointer"
+                value={sortBy}
+                onChange={e => setSortBy(e.target.value)}
+              >
+                <option value="newest">Newest First</option>
+                <option value="oldest">Oldest First</option>
+              </select>
+            </div>
+          </div>
+
+          {filteredQuestions.length === 0 ? (
+            <div className="glass p-12 text-center text-muted flex flex-col items-center">
+              <div className="text-4xl mb-4 opacity-50">🔍</div>
+              <p className="text-lg font-semibold">No questions match your search.</p>
+              <button 
+                onClick={() => { setSearchQuery(''); setDifficultyFilter('All'); }}
+                className="text-primary hover:underline mt-2 font-medium"
+              >
+                Clear filters
+              </button>
+            </div>
+          ) : (
+            <div className="grid gap-4">
+              {filteredQuestions.map(q => (
+                <Link key={q.id} href={`/questions/${q.id}`}
               className="glass p-6 group glass-hover flex flex-col md:flex-row md:items-center justify-between gap-6 border-l-4"
               style={{ borderLeftColor: q.difficulty === 'Easy' ? '#10b981' : (q.difficulty === 'Hard' ? '#f43f5e' : '#fb8c00') }}>
               <div className="flex items-center gap-6 flex-1">
@@ -118,7 +192,9 @@ export default function FolderDetail() {
               </div>
             </Link>
           ))}
-        </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* Add Question Modal */}
