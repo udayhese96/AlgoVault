@@ -40,7 +40,9 @@ export default function QuestionDetail() {
   const [code, setCode] = useState('')
   const [description, setDescription] = useState('')
   const [approach, setApproach] = useState('')
-  const [terminalOutput, setTerminalOutput] = useState('')
+  const [terminalOutput, setTerminalOutput] = useState('') // This is the saved "Pasted Output"
+  const [compiledOutput, setCompiledOutput] = useState('') // Transient execution output
+  const [activeOutputTab, setActiveOutputTab] = useState('compiled') // 'compiled' | 'pasted'
   const [isExecuting, setIsExecuting] = useState(false)
 
   // Sidebar state
@@ -91,7 +93,23 @@ export default function QuestionDetail() {
     setQuestion(data)
     const lang = data.last_language || 'java'
     setActiveLang(lang)
-    setCode(lang === 'python' ? (data.code_python || '') : (data.code_java || ''))
+    
+    let initialCode = '';
+    if (lang === 'python') initialCode = data.code_python;
+    else if (lang === 'java') initialCode = data.code_java;
+    else if (lang === 'cpp') initialCode = data.code_cpp;
+
+    if (!initialCode) {
+        if (lang === 'cpp') {
+            initialCode = '#include <iostream>\nusing namespace std;\n\nint main() {\n    cout << "Hello World" << endl;\n    return 0;\n}';
+        } else if (lang === 'python') {
+            initialCode = 'print("Hello World")';
+        } else if (lang === 'java') {
+            initialCode = 'import java.util.*;\n\nclass Main {\n    public static void main(String[] args) {\n        System.out.println("Hello World");\n    }\n}';
+        }
+    }
+    
+    setCode(initialCode)
     setDescription(data.description || '')
     setApproach(data.solving_approach || '')
     setTerminalOutput(data.terminal_output || '')
@@ -100,9 +118,27 @@ export default function QuestionDetail() {
 
   const handleLanguageChange = (lang) => {
     if (activeLang === 'java') setQuestion(prev => ({ ...prev, code_java: code }))
-    else setQuestion(prev => ({ ...prev, code_python: code }))
+    else if (activeLang === 'python') setQuestion(prev => ({ ...prev, code_python: code }))
+    else if (activeLang === 'cpp') setQuestion(prev => ({ ...prev, code_cpp: code }))
+    
     setActiveLang(lang)
-    setCode(lang === 'python' ? (question?.code_python || '') : (question?.code_java || ''))
+    
+    let nextCode = '';
+    if (lang === 'python') nextCode = question?.code_python;
+    else if (lang === 'java') nextCode = question?.code_java;
+    else if (lang === 'cpp') nextCode = question?.code_cpp;
+
+    if (!nextCode) {
+        if (lang === 'cpp') {
+            nextCode = '#include <iostream>\nusing namespace std;\n\nint main() {\n    cout << "Hello World" << endl;\n    return 0;\n}';
+        } else if (lang === 'python') {
+            nextCode = 'print("Hello World")';
+        } else if (lang === 'java') {
+            nextCode = 'import java.util.*;\n\nclass Main {\n    public static void main(String[] args) {\n        System.out.println("Hello World");\n    }\n}';
+        }
+    }
+    
+    setCode(nextCode || '')
   }
 
   const saveQuestion = async () => {
@@ -115,7 +151,8 @@ export default function QuestionDetail() {
       updated_at: new Date().toISOString(),
     }
     if (activeLang === 'java') updateData.code_java = code
-    else updateData.code_python = code
+    else if (activeLang === 'python') updateData.code_python = code
+    else if (activeLang === 'cpp') updateData.code_cpp = code
 
     const { error } = await supabase
       .from('questions')
@@ -134,7 +171,8 @@ export default function QuestionDetail() {
     if (!code.trim()) return
     setIsExecuting(true)
     setOutputExpanded(true)
-    setTerminalOutput('Executing code on secure compiler engine...\n\n')
+    setActiveOutputTab('compiled')
+    setCompiledOutput('Executing code on secure compiler engine...\n\n')
     
     try {
       const res = await fetch('/api/execute', {
@@ -146,14 +184,14 @@ export default function QuestionDetail() {
       const data = await res.json()
       
       if (!res.ok) {
-        setTerminalOutput(`Execution Error:\n\n${data.error}`)
+        setCompiledOutput(`Execution Error:\n\n${data.error}`)
       } else {
         const outputStr = data.output || 'Code executed successfully with no output.'
         const memoryStr = data.memory ? `\n\n---\n[Memory: ${data.memory} KB | Time: ${data.time}s]` : ''
-        setTerminalOutput(`${outputStr}${memoryStr}`)
+        setCompiledOutput(`${outputStr}${memoryStr}`)
       }
     } catch (err) {
-      setTerminalOutput(`Network Error: Failed to reach execution server.\nDetails: ${err.message}`)
+      setCompiledOutput(`Network Error: Failed to reach execution server.\nDetails: ${err.message}`)
     } finally {
       setIsExecuting(false)
     }
@@ -394,7 +432,7 @@ export default function QuestionDetail() {
 
             {/* Language selector */}
             <div className="flex gap-1 p-0.5 rounded-lg" style={{background:'var(--glass-bg)', border:'1px solid var(--glass-border)'}}>
-              {['java','python'].map(lang => (
+              {['java','python','cpp'].map(lang => (
                 <button
                   key={lang}
                   onClick={() => handleLanguageChange(lang)}
@@ -404,7 +442,7 @@ export default function QuestionDetail() {
                     : {color:'var(--fg-muted)'}
                   }
                 >
-                  {lang === 'java' ? '☕ Java' : '🐍 Python'}
+                  {lang === 'java' ? '☕ Java' : lang === 'python' ? '🐍 Python' : '⚙️ C++'}
                 </button>
               ))}
             </div>
@@ -439,7 +477,7 @@ export default function QuestionDetail() {
           <div className="flex-1 min-h-0" style={{overflow:'hidden'}}>
             <MonacoEditor
               height="100%"
-              language={activeLang === 'java' ? 'java' : 'python'}
+              language={activeLang === 'java' ? 'java' : activeLang === 'python' ? 'python' : 'cpp'}
               theme={theme === 'dark' ? 'vs-dark' : 'light'}
               value={code}
               onChange={val => setCode(val || '')}
@@ -477,24 +515,68 @@ export default function QuestionDetail() {
             }}>
 
             {/* Output tab bar */}
-            <div className="flex items-center justify-between px-4 shrink-0 cursor-pointer select-none"
+            <div className="flex items-center justify-between px-0 shrink-0 select-none"
               style={{height:'44px', borderBottom: outputExpanded ? '1px solid var(--glass-border)' : 'none'}}
-              onClick={() => setOutputExpanded(!outputExpanded)}>
+              >
 
-              <div className="flex items-center gap-3">
-                <span className="text-xs font-black uppercase tracking-widest" style={{color:'#3fb950'}}>
-                  🖥 Terminal Output
-                </span>
-                <span className="text-[10px] px-2 py-0.5 rounded font-bold"
-                  style={{background:'rgba(63,185,80,0.1)', color:'#3fb950', border:'1px solid rgba(63,185,80,0.25)'}}>
-                  Live Execution Engine
-                </span>
+              <div className="flex items-center h-full">
+                <button
+                  onClick={() => { setOutputExpanded(true); setActiveOutputTab('compiled') }}
+                  className="h-full px-4 flex items-center gap-2 transition-all relative"
+                  style={{
+                    color: activeOutputTab === 'compiled' ? '#3fb950' : 'var(--fg-muted)',
+                    background: activeOutputTab === 'compiled' ? 'var(--glass-bg)' : 'transparent',
+                    borderRight: '1px solid var(--glass-border)'
+                  }}
+                >
+                  <span className="text-xs font-black uppercase tracking-widest">
+                    🖥 Compiled Run
+                  </span>
+                  {activeOutputTab === 'compiled' && (
+                     <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#3fb950]"></div>
+                  )}
+                </button>
+
+                <button
+                  onClick={() => { setOutputExpanded(true); setActiveOutputTab('pasted') }}
+                  className="h-full px-4 flex items-center gap-2 transition-all relative"
+                  style={{
+                    color: activeOutputTab === 'pasted' ? 'var(--primary)' : 'var(--fg-muted)',
+                    background: activeOutputTab === 'pasted' ? 'var(--glass-bg)' : 'transparent',
+                    borderRight: '1px solid var(--glass-border)'
+                  }}
+                >
+                  <span className="text-xs font-black uppercase tracking-widest">
+                    📝 Pasted Output
+                  </span>
+                  {activeOutputTab === 'pasted' && (
+                     <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--primary)]"></div>
+                  )}
+                </button>
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 pr-4">
+                {outputExpanded && activeOutputTab === 'pasted' && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setTerminalOutput(compiledOutput) }}
+                    className="text-[10px] font-bold uppercase px-3 py-1 rounded transition-all"
+                    style={{
+                      color:'var(--primary)',
+                      background:'rgba(59,130,246,0.1)',
+                      border:'1px solid rgba(59,130,246,0.25)'
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background='rgba(59,130,246,0.15)'}
+                    onMouseLeave={e => e.currentTarget.style.background='rgba(59,130,246,0.1)'}>
+                    Copy from Compiled
+                  </button>
+                )}
                 {outputExpanded && (
                   <button
-                    onClick={e => { e.stopPropagation(); setTerminalOutput('') }}
+                    onClick={e => { 
+                      e.stopPropagation(); 
+                      if (activeOutputTab === 'compiled') setCompiledOutput('');
+                      else setTerminalOutput('');
+                    }}
                     className="text-[10px] font-bold uppercase px-2 py-0.5 rounded transition-all"
                     style={{
                       color:'var(--fg-subtle)',
@@ -506,9 +588,9 @@ export default function QuestionDetail() {
                     Clear
                   </button>
                 )}
-                <span className="text-xs" style={{color:'var(--fg-subtle)'}}>
+                <button onClick={() => setOutputExpanded(!outputExpanded)} className="text-xs ml-1" style={{color:'var(--fg-subtle)'}}>
                   {outputExpanded ? '▼' : '▲'}
-                </span>
+                </button>
               </div>
             </div>
 
@@ -524,25 +606,43 @@ export default function QuestionDetail() {
                     minWidth:'52px',
                     paddingRight:'12px',
                   }}>
-                  <span style={{color:'#3fb950'}}>$</span>
+                  <span style={{color: activeOutputTab === 'compiled' ? '#3fb950' : 'var(--primary)'}}>$</span>
                 </div>
 
-                <textarea
-                  className="flex-1 resize-none font-mono outline-none"
-                  style={{
-                    background: 'var(--input-bg)',
-                    color: terminalOutput ? 'var(--fg)' : 'var(--fg-muted)',
-                    caretColor: '#3fb950',
-                    fontSize: '14px',
-                    lineHeight: '1.8',
-                    padding: '14px 16px',
-                    letterSpacing: '0.01em',
-                  }}
-                  placeholder={"Run your code to see the output here...\n\nOr paste custom terminal output manually."}
-                  value={terminalOutput}
-                  onChange={e => setTerminalOutput(e.target.value)}
-                  spellCheck={false}
-                />
+                {activeOutputTab === 'compiled' ? (
+                  <textarea
+                    className="flex-1 resize-none font-mono outline-none"
+                    style={{
+                      background: 'var(--input-bg)',
+                      color: compiledOutput ? 'var(--fg)' : 'var(--fg-muted)',
+                      caretColor: '#3fb950',
+                      fontSize: '14px',
+                      lineHeight: '1.8',
+                      padding: '14px 16px',
+                      letterSpacing: '0.01em',
+                    }}
+                    readOnly
+                    placeholder={"Run your code to see the compiled output here..."}
+                    value={compiledOutput}
+                  />
+                ) : (
+                  <textarea
+                    className="flex-1 resize-none font-mono outline-none"
+                    style={{
+                      background: 'var(--input-bg)',
+                      color: terminalOutput ? 'var(--fg)' : 'var(--fg-muted)',
+                      caretColor: 'var(--primary)',
+                      fontSize: '14px',
+                      lineHeight: '1.8',
+                      padding: '14px 16px',
+                      letterSpacing: '0.01em',
+                    }}
+                    placeholder={"Paste your terminal output manually, or click 'Copy from Compiled' to copy the run output..."}
+                    value={terminalOutput}
+                    onChange={e => setTerminalOutput(e.target.value)}
+                    spellCheck={false}
+                  />
+                )}
               </div>
             )}
           </div>

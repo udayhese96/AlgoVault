@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState, useRef } from 'react'
 import { useTheme } from '@/components/ThemeContext'
 import { useAuth } from '@/components/AuthContext'
+import { createClient } from '@/lib/supabase'
 
 export default function Navbar() {
   const router = useRouter()
@@ -13,6 +14,10 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const dropdownRef = useRef(null)
+  
+  // Streak tracking state
+  const [streakInfo, setStreakInfo] = useState({ currentStreak: 0, solvedToday: false })
+  const supabase = createClient()
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 10)
@@ -31,6 +36,74 @@ export default function Navbar() {
       document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [])
+
+  // Date formatting helper for streaks
+  const formatDate = (date) => {
+    const d = new Date(date)
+    let month = '' + (d.getMonth() + 1)
+    let day = '' + d.getDate()
+    const year = d.getFullYear()
+    if (month.length < 2) month = '0' + month
+    if (day.length < 2) day = '0' + day
+    return [year, month, day].join('-')
+  }
+
+  // Fetch streak logic
+  useEffect(() => {
+    if (user) {
+      const fetchStreak = async () => {
+        const { data, error } = await supabase
+          .from('questions')
+          .select('created_at')
+          .eq('user_id', user.id)
+
+        if (!error && data) {
+          const activity = {}
+          data.forEach(q => {
+            if (q.created_at) {
+              const dateStr = formatDate(q.created_at)
+              activity[dateStr] = true
+            }
+          })
+          
+          let currentStreak = 0
+          let solvedToday = false
+          
+          const today = new Date()
+          today.setHours(0,0,0,0)
+          let dateWalker = new Date(today)
+          
+          let dateStr = formatDate(dateWalker)
+          if (activity[dateStr]) {
+              solvedToday = true
+              currentStreak++
+              dateWalker.setDate(dateWalker.getDate() - 1)
+          } else {
+              // Check yesterday if today is not solved
+              dateWalker.setDate(dateWalker.getDate() - 1)
+              dateStr = formatDate(dateWalker)
+              if (activity[dateStr]) {
+                  currentStreak++
+                  dateWalker.setDate(dateWalker.getDate() - 1)
+              }
+          }
+          
+          while(currentStreak > 0) {
+              dateStr = formatDate(dateWalker)
+              if (activity[dateStr]) {
+                  currentStreak++
+                  dateWalker.setDate(dateWalker.getDate() - 1)
+              } else {
+                  break
+              }
+          }
+          
+          setStreakInfo({ currentStreak, solvedToday })
+        }
+      }
+      fetchStreak()
+    }
+  }, [user])
 
   const handleLogout = async () => {
     await logout()
@@ -74,7 +147,32 @@ export default function Navbar() {
         )}
 
         {/* Right Actions */}
-        <div className="flex items-center gap-3 ml-auto">
+        <div className="flex items-center gap-4 ml-auto">
+          
+          {/* Streak Indicator (LeetCode Style) */}
+          {user && (
+            <div 
+              className="flex items-center gap-1.5 font-bold px-2 py-1.5 rounded-lg transition-colors hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer"
+              title={streakInfo.solvedToday ? "Today's problem solved!" : "Solve a problem today to keep your streak!"}
+            >
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                viewBox="0 0 24 24" 
+                fill={streakInfo.solvedToday ? "currentColor" : "none"} 
+                stroke="currentColor" 
+                strokeWidth={streakInfo.solvedToday ? "0" : "2"} 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                className={`w-5 h-5 ${streakInfo.solvedToday ? 'text-orange-500 drop-shadow-md' : 'text-gray-400 dark:text-gray-500'}`}
+              >
+                <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
+              </svg>
+              <span className={`text-[15px] leading-none ${streakInfo.solvedToday ? 'text-orange-500' : 'text-gray-400 dark:text-gray-500'}`}>
+                {streakInfo.currentStreak}
+              </span>
+            </div>
+          )}
+
           {/* Theme Toggle */}
           <button
             onClick={toggleTheme}

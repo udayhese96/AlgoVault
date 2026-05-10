@@ -3,17 +3,17 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 
 const ThemeContext = createContext({
-  theme: 'dark',
+  theme: 'light',
   toggleTheme: () => {},
 })
 
 export function ThemeProvider({ children }) {
-  const [theme, setTheme] = useState('dark')
+  const [theme, setTheme] = useState('light')
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
     // Check local storage or system preference
-    const savedTheme = localStorage.getItem('dsa-theme') || 'dark'
+    const savedTheme = localStorage.getItem('dsa-theme') || 'light'
     setTheme(savedTheme)
     document.documentElement.setAttribute('data-theme', savedTheme)
     setMounted(true)

@@ -4,6 +4,7 @@ import { ThemeProvider } from '@/components/ThemeContext'
 import { AuthProvider } from '@/components/AuthContext'
 
 export const metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'),
   title: 'AlgoVault — DSA Practice Platform',
   description: 'Your personal DSA vault. Organize questions, write strategies, and track your progress.',
   icons: {
