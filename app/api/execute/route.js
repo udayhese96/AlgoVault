@@ -30,6 +30,13 @@ export async function POST(request) {
       return NextResponse.json({ error: `Language '${language}' is not supported by Judge0` }, { status: 400 })
     }
 
+    let finalCode = code;
+    // Judge0 requires the public class to be named Main for Java
+    if (normalizedLanguage === 'java') {
+      finalCode = finalCode.replace(/public\s+class\s+\w+/g, 'class Main');
+      finalCode = finalCode.replace(/class\s+Solution/g, 'class Main');
+    }
+
     // Using the free Judge0 Community Edition API (No API key required)
     const response = await fetch('https://ce.judge0.com/submissions?base64_encoded=false&wait=true', {
       method: 'POST',
@@ -37,7 +44,7 @@ export async function POST(request) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        source_code: code,
+        source_code: finalCode,
         language_id: languageId,
         stdin: input || ""
       })

@@ -385,7 +385,9 @@ export default function Dashboard() {
         </div>
       ) : folders.length === 0 ? (
         <div className="glass p-16 text-center flex flex-col items-center max-w-3xl mx-auto border-dashed border-2">
-          <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center text-4xl mb-6">📂</div>
+          <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mb-6 text-primary">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-10 h-10"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+          </div>
           <h2 className="text-3xl font-bold mb-4">No Vaults Found</h2>
           <p className="text-muted text-lg mb-10 max-w-md">Start by creating your first folder like "Arrays" or "Recursion". You can customize each with unique colors.</p>
           <button onClick={() => setShowModal(true)} className="btn btn-primary px-8">Create My First Vault</button>
@@ -397,11 +399,15 @@ export default function Dashboard() {
               className="glass p-8 group glass-hover relative overflow-hidden"
               style={{ borderTop: `6px solid ${folder.color}` }}>
               <div className="flex justify-between items-start mb-6">
-                <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shadow-inner group-hover:scale-110 transition-transform"
-                  style={{ backgroundColor: `${folder.color}15`, color: folder.color }}>📁</div>
+                <div className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform"
+                  style={{ backgroundColor: `${folder.color}15`, color: folder.color }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                </div>
                 <button onClick={(e) => deleteFolder(folder.id, e)}
-                  className="opacity-0 group-hover:opacity-100 p-2 text-muted hover:text-red-500 transition-all"
-                  aria-label="Delete Folder">✕</button>
+                  className="opacity-0 group-hover:opacity-100 p-2.5 rounded-xl border border-transparent text-muted hover:text-red-500 hover:border-red-500/30 hover:bg-red-500/5 transition-all"
+                  aria-label="Delete Folder" title="Delete Vault">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                </button>
               </div>
               <h3 className="text-2xl font-bold mb-2 truncate group-hover:text-primary transition-colors">{folder.name}</h3>
               <div className="flex items-center gap-2 text-muted font-medium">

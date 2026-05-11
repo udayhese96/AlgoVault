@@ -50,6 +50,18 @@ export default function QuestionDetail() {
   const [sidebarData, setSidebarData] = useState([])
   const [expandedFolders, setExpandedFolders] = useState({})
 
+  // Sidebar Actions State
+  const [showNewFolderModal, setShowNewFolderModal] = useState(false)
+  const [showNewQuestionModal, setShowNewQuestionModal] = useState(false)
+  
+  const [newFolderName, setNewFolderName] = useState('')
+  const [newFolderColor, setNewFolderColor] = useState('#3b82f6')
+  
+  const [newQuestionTitle, setNewQuestionTitle] = useState('')
+  const [newQuestionDifficulty, setNewQuestionDifficulty] = useState('Medium')
+  const [newQuestionFolderId, setNewQuestionFolderId] = useState('')
+  const [newQuestionTags, setNewQuestionTags] = useState('')
+
   const supabase = createClient()
   const router = useRouter()
 
@@ -78,6 +90,49 @@ export default function QuestionDetail() {
 
   const toggleFolder = (folderId) => {
     setExpandedFolders(prev => ({...prev, [folderId]: !prev[folderId]}))
+  }
+
+  const handleCreateFolder = async (e) => {
+    e.preventDefault()
+    if (!newFolderName.trim() || !user) return
+    const { error } = await supabase.from('folders').insert([{
+      name: newFolderName,
+      color: newFolderColor,
+      user_id: user.id
+    }])
+    if (!error) {
+      setNewFolderName('')
+      setShowNewFolderModal(false)
+      fetchSidebarData()
+    }
+  }
+
+  const handleCreateQuestion = async (e) => {
+    e.preventDefault()
+    const targetFolder = newQuestionFolderId || question?.folder?.id
+    if (!newQuestionTitle.trim() || !user || !targetFolder) return
+    
+    const { data, error } = await supabase.from('questions').insert([{
+      title: newQuestionTitle,
+      difficulty: newQuestionDifficulty,
+      tags: newQuestionTags,
+      folder_id: targetFolder,
+      user_id: user.id
+    }]).select()
+    
+    if (!error && data) {
+      setNewQuestionTitle('')
+      setNewQuestionDifficulty('Medium')
+      setNewQuestionTags('')
+      setShowNewQuestionModal(false)
+      fetchSidebarData()
+      
+      // Auto-expand the folder where it was added
+      setExpandedFolders(prev => ({...prev, [targetFolder]: true}))
+      
+      // Optionally navigate to the new question
+      router.push(`/questions/${data[0].id}`)
+    }
   }
 
   const fetchQuestionData = async () => {
@@ -277,9 +332,23 @@ export default function QuestionDetail() {
               borderColor:'var(--glass-border)',
               background:'var(--bg-surface)',
             }}>
-            <div className="px-4 py-3 border-b text-xs font-bold uppercase tracking-widest flex items-center justify-between"
+            <div className="px-4 py-3 border-b text-xs font-bold uppercase tracking-widest flex items-center justify-between group"
               style={{borderColor:'var(--glass-border)', color:'var(--fg-muted)'}}>
-              Explorer
+              <span>AlgoVault</span>
+              <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button onClick={() => {
+                  setNewQuestionFolderId(question?.folder?.id || '')
+                  setShowNewQuestionModal(true)
+                }} title="New Question" className="hover:text-[var(--fg)]">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
+                </button>
+                <button onClick={() => setShowNewFolderModal(true)} title="New Folder" className="hover:text-[var(--fg)]">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path><line x1="12" y1="11" x2="12" y2="17"></line><line x1="9" y1="14" x2="15" y2="14"></line></svg>
+                </button>
+                <button onClick={fetchSidebarData} title="Refresh" className="hover:text-[var(--fg)]">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+                </button>
+              </div>
             </div>
             <div className="flex-1 overflow-y-auto p-2" style={{scrollbarWidth:'thin'}}>
               {sidebarData.map(folder => (
@@ -649,6 +718,90 @@ export default function QuestionDetail() {
 
         </div>
       </div>
+
+      {/* ── MODALS ── */}
+
+      {/* New Folder Modal */}
+      {showNewFolderModal && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setShowNewFolderModal(false)} />
+          <div className="glass p-8 w-full max-w-md relative z-10 animate-in fade-in zoom-in duration-200" style={{background: 'var(--bg-surface)', border: '1px solid var(--glass-border)'}}>
+            <h2 className="text-2xl font-bold mb-6">Create Vault Folder</h2>
+            <form onSubmit={handleCreateFolder} className="space-y-6">
+              <div>
+                <label className="block text-sm font-semibold mb-2 text-muted" style={{color: 'var(--fg-muted)'}}>Folder Name</label>
+                <input type="text" className="w-full px-4 py-2 border rounded-xl text-sm outline-none" placeholder="e.g. Dynamic Programming"
+                  style={{ background: 'var(--input-bg)', borderColor: 'var(--glass-border)', color: 'var(--fg)' }}
+                  value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)} autoFocus required />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold mb-2 text-muted" style={{color: 'var(--fg-muted)'}}>Theme Color</label>
+                <div className="flex gap-3">
+                  {['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'].map(c => (
+                    <button key={c} type="button" onClick={() => setNewFolderColor(c)}
+                      className={`w-8 h-8 rounded-full border-2 transition-all ${newFolderColor === c ? 'border-white scale-110' : 'border-transparent hover:scale-110'}`}
+                      style={{ backgroundColor: c, boxShadow: newFolderColor === c ? `0 0 12px ${c}` : 'none' }}
+                    />
+                  ))}
+                </div>
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button type="button" onClick={() => setShowNewFolderModal(false)} className="px-4 py-2 rounded-xl text-sm font-semibold hover:bg-black/5 dark:hover:bg-white/5 transition-colors flex-1" style={{color: 'var(--fg)'}}>Cancel</button>
+                <button type="submit" className="px-4 py-2 rounded-xl text-sm font-semibold text-white flex-1 transition-transform active:scale-95 shadow-lg" style={{background: 'var(--primary)'}}>Create</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* New Question Modal */}
+      {showNewQuestionModal && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setShowNewQuestionModal(false)} />
+          <div className="glass p-8 w-full max-w-md relative z-10 animate-in fade-in zoom-in duration-200" style={{background: 'var(--bg-surface)', border: '1px solid var(--glass-border)'}}>
+            <h2 className="text-2xl font-bold mb-6">Create Question</h2>
+            <form onSubmit={handleCreateQuestion} className="space-y-6">
+              <div>
+                <label className="block text-sm font-semibold mb-2 text-muted" style={{color: 'var(--fg-muted)'}}>Target Folder</label>
+                <select className="w-full px-4 py-2 border rounded-xl text-sm outline-none appearance-none cursor-pointer"
+                  style={{ background: 'var(--input-bg)', borderColor: 'var(--glass-border)', color: 'var(--fg)' }}
+                  value={newQuestionFolderId} onChange={(e) => setNewQuestionFolderId(e.target.value)} required>
+                  <option value="" disabled style={{background: 'var(--bg-surface)', color: 'var(--fg)'}}>Select a folder</option>
+                  {sidebarData.map(f => (
+                    <option key={f.id} value={f.id} style={{background: 'var(--bg-surface)', color: 'var(--fg)'}}>{f.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold mb-2 text-muted" style={{color: 'var(--fg-muted)'}}>Question Title</label>
+                <input type="text" className="w-full px-4 py-2 border rounded-xl text-sm outline-none" placeholder="e.g. Two Sum"
+                  style={{ background: 'var(--input-bg)', borderColor: 'var(--glass-border)', color: 'var(--fg)' }}
+                  value={newQuestionTitle} onChange={(e) => setNewQuestionTitle(e.target.value)} autoFocus required />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold mb-2 text-muted" style={{color: 'var(--fg-muted)'}}>Difficulty</label>
+                <select className="w-full px-4 py-2 border rounded-xl text-sm outline-none appearance-none cursor-pointer"
+                  style={{ background: 'var(--input-bg)', borderColor: 'var(--glass-border)', color: 'var(--fg)' }}
+                  value={newQuestionDifficulty} onChange={(e) => setNewQuestionDifficulty(e.target.value)}>
+                  <option value="Easy" style={{background: 'var(--bg-surface)', color: 'var(--fg)'}}>🟢 Easy</option>
+                  <option value="Medium" style={{background: 'var(--bg-surface)', color: 'var(--fg)'}}>🟠 Medium</option>
+                  <option value="Hard" style={{background: 'var(--bg-surface)', color: 'var(--fg)'}}>🔴 Hard</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold mb-2 text-muted" style={{color: 'var(--fg-muted)'}}>Attributes (comma-separated)</label>
+                <input type="text" className="w-full px-4 py-2 border rounded-xl text-sm outline-none" placeholder="e.g. Strings, Map"
+                  style={{ background: 'var(--input-bg)', borderColor: 'var(--glass-border)', color: 'var(--fg)' }}
+                  value={newQuestionTags} onChange={(e) => setNewQuestionTags(e.target.value)} />
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button type="button" onClick={() => setShowNewQuestionModal(false)} className="px-4 py-2 rounded-xl text-sm font-semibold hover:bg-black/5 dark:hover:bg-white/5 transition-colors flex-1" style={{color: 'var(--fg)'}}>Cancel</button>
+                <button type="submit" className="px-4 py-2 rounded-xl text-sm font-semibold text-white flex-1 transition-transform active:scale-95 shadow-lg" style={{background: 'var(--primary)'}}>Create</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
